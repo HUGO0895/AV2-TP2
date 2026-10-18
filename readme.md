@@ -236,7 +236,7 @@ Para ver o notificador do tipo, olhe o console da API: aparece uma linha JSON `"
 | Só `ProjetoDocumentario` visível (imagem cortada) | `ProjetoAnimacao` e `ProjetoPublicitario` com atributos próprios | Atributos de animação e publicitário **inventados** (técnica/cenas; cliente/veículos). Ajuste se o diagrama completo for diferente. |
 | 3 fábricas | 3 + `FabricaFiccao` | Mantém `FICÇÃO` funcionando como antes. |
 
-## 6. A API HTTP (já existia, agora com tipos de projeto)
+## 6. A API HTTP: corpos prontos para copiar e colar
 
 | Método e rota | Para quê |
 |---|---|
@@ -245,18 +245,32 @@ Para ver o notificador do tipo, olhe o console da API: aparece uma linha JSON `"
 | `POST /equipe/substituir` | trocar o profissional de um papel, mantendo os demais |
 | `POST /convites/responder` | aceitar (confirma) ou recusar (substitui) uma sugestão |
 
-### 6.1 Recomendar uma equipe
+### 6.0 Configuração no Insomnia, Postman, Bruno ou Thunder Client
 
-O arquivo `exemplos/projeto.json` já traz um corpo pronto.
+1. Suba a API (`npm start`). O endereço base é `http://localhost:3000`.
+2. Crie uma requisição com o método e a URL da tabela acima (ex.: `POST http://localhost:3000/`).
+3. Em **Body**, escolha **JSON** (no Postman: *raw* + *JSON*) e cole o corpo do exemplo. O cabeçalho `Content-Type: application/json` é colocado automaticamente; se a ferramenta não colocar, adicione-o.
+4. Envie e compare com o "resultado esperado" abaixo cada exemplo.
 
-```bash
-curl -X POST http://localhost:3000/ -H "content-type: application/json" -d @exemplos/projeto.json
+Regras para o JSON colado funcionar:
+- Cole **sem alterar os acentos**: `"tipo"` usa `"FICÇÃO"` e `"ANIMAÇÃO"`, e `"genero"` usa `"AÇÃO"`.
+- JSON não aceita comentários nem vírgula sobrando no fim.
+- `GET /saude` não tem corpo.
+
+> **Sobre os resultados esperados:** os nomes e ids abaixo vêm dos dados do seed (32 profissionais criados na primeira execução). Eles só se repetem se o seu banco foi populado por esse seed e você não alterou os dados. Os exemplos foram conferidos contra uma réplica em memória do seed; se algum resultado diferir no seu banco, o formato da resposta continua o mesmo, só mudam os profissionais.
+> Todos os exemplos usam `prazo` em março ou junho de 2026, dentro da janela de disponibilidade dos profissionais do seed.
+
+### 6.1 `GET /saude`
+
+Sem corpo. Resposta esperada: `200` com
+
+```json
+{ "status": "ok" }
 ```
-```powershell
-Invoke-RestMethod -Uri http://localhost:3000/ -Method Post -ContentType 'application/json' -InFile .\exemplos\projeto.json | ConvertTo-Json -Depth 8
-```
 
-**Campos do corpo**
+### 6.2 `POST /` (recomendar uma equipe)
+
+**Campos do corpo** (a tabela abaixo explica cada um)
 
 | Campo | Obrigatório | Descrição |
 |---|---|---|
@@ -283,7 +297,315 @@ Invoke-RestMethod -Uri http://localhost:3000/ -Method Post -ContentType 'applica
 
 Para ver o Strategy funcionando, envie o mesmo projeto trocando só `estrategia` e compare os profissionais devolvidos.
 
-**Resposta**
+
+#### Exemplo 1: ficção, estratégia `similiaridadecosseno`
+
+Resultado esperado: `200`, `status: "formada"`, DIRETOR = 1 Ana Lima, EDITOR = 3 Fernanda Oliveira, SONOPLASTA = 15 Patrícia Almeida, todos com `confirmado: false`.
+
+```json
+{
+  "id": 1,
+  "genero": "DRAMA",
+  "tipo": "FICÇÃO",
+  "duracaoMin": 90,
+  "orcamento": 150000,
+  "prazo": "2026-03-10T00:00:00.000Z",
+  "competencias": {
+    "DIRETOR": [
+      {
+        "nome": "Direção",
+        "nivel": 5
+      }
+    ],
+    "EDITOR": [
+      {
+        "nome": "Edição",
+        "nivel": 4
+      }
+    ],
+    "SONOPLASTA": [
+      {
+        "nome": "Som",
+        "nivel": 5
+      }
+    ]
+  },
+  "pesos": {
+    "DIRETOR": 3,
+    "EDITOR": 2,
+    "SONOPLASTA": 1
+  },
+  "estrategia": "similiaridadecosseno",
+  "parametros": {
+    "limiarMinimo": 0.2
+  }
+}
+```
+
+#### Exemplo 2: o mesmo projeto com `filtragemcolaborativa`
+
+Só mudam `estrategia` e `parametros`. Resultado esperado: DIRETOR = 25 Letícia Dias, EDITOR = 1 Ana Lima, SONOPLASTA = 13 Larissa Melo. A troca de estratégia mudou a equipe.
+
+```json
+{
+  "id": 1,
+  "genero": "DRAMA",
+  "tipo": "FICÇÃO",
+  "duracaoMin": 90,
+  "orcamento": 150000,
+  "prazo": "2026-03-10T00:00:00.000Z",
+  "competencias": {
+    "DIRETOR": [
+      {
+        "nome": "Direção",
+        "nivel": 5
+      }
+    ],
+    "EDITOR": [
+      {
+        "nome": "Edição",
+        "nivel": 4
+      }
+    ],
+    "SONOPLASTA": [
+      {
+        "nome": "Som",
+        "nivel": 5
+      }
+    ]
+  },
+  "pesos": {
+    "DIRETOR": 3,
+    "EDITOR": 2,
+    "SONOPLASTA": 1
+  },
+  "estrategia": "filtragemcolaborativa",
+  "parametros": {
+    "minAvaliacoes": 1
+  }
+}
+```
+
+#### Exemplo 3: o mesmo projeto com `regrasdeorcamento`
+
+Resultado esperado: DIRETOR = 1 Ana Lima, EDITOR = 2 Carlos Ribeiro, SONOPLASTA = 3 Fernanda Oliveira.
+
+```json
+{
+  "id": 1,
+  "genero": "DRAMA",
+  "tipo": "FICÇÃO",
+  "duracaoMin": 90,
+  "orcamento": 150000,
+  "prazo": "2026-03-10T00:00:00.000Z",
+  "competencias": {
+    "DIRETOR": [
+      {
+        "nome": "Direção",
+        "nivel": 5
+      }
+    ],
+    "EDITOR": [
+      {
+        "nome": "Edição",
+        "nivel": 4
+      }
+    ],
+    "SONOPLASTA": [
+      {
+        "nome": "Som",
+        "nivel": 5
+      }
+    ]
+  },
+  "pesos": {
+    "DIRETOR": 3,
+    "EDITOR": 2,
+    "SONOPLASTA": 1
+  },
+  "estrategia": "regrasdeorcamento",
+  "parametros": {
+    "usarPesos": true,
+    "topPorPapel": 50
+  }
+}
+```
+
+#### Exemplo 4: documentário (`DOCUMENTARIO`)
+
+Resultado esperado: `formada`, DIRETOR = 18 Diego Rocha, EDITOR = 3 Fernanda Oliveira, ROTEIRISTA = 2 Carlos Ribeiro. No console da API aparece `NOTIFICADOR-DOCUMENTARIO`.
+
+```json
+{
+  "id": 2,
+  "genero": "DRAMA",
+  "tipo": "DOCUMENTARIO",
+  "duracaoMin": 60,
+  "orcamento": 90000,
+  "prazo": "2026-06-10T00:00:00.000Z",
+  "competencias": {
+    "DIRETOR": [
+      {
+        "nome": "Direção",
+        "nivel": 5
+      }
+    ],
+    "EDITOR": [
+      {
+        "nome": "Edição",
+        "nivel": 4
+      }
+    ],
+    "ROTEIRISTA": [
+      {
+        "nome": "Roteiro",
+        "nivel": 3
+      }
+    ]
+  },
+  "estrategia": "similiaridadecosseno",
+  "detalhes": {
+    "tema": "Rios do Brasil",
+    "entrevistados": [
+      "Ana Lima",
+      "Carlos Souza"
+    ]
+  }
+}
+```
+
+#### Exemplo 5: animação (`ANIMAÇÃO`)
+
+Resultado esperado: `formada`, DIRETOR = 18 Diego Rocha, EFEITOS VISUAIS = 3 Fernanda Oliveira.
+
+```json
+{
+  "id": 3,
+  "genero": "COMEDIA",
+  "tipo": "ANIMAÇÃO",
+  "duracaoMin": 15,
+  "orcamento": 120000,
+  "prazo": "2026-06-10T00:00:00.000Z",
+  "competencias": {
+    "DIRETOR": [
+      {
+        "nome": "Direção",
+        "nivel": 4
+      }
+    ],
+    "EFEITOS_VISUAIS": [
+      {
+        "nome": "Efeitos Visuais",
+        "nivel": 5
+      }
+    ]
+  },
+  "estrategia": "similiaridadecosseno",
+  "detalhes": {
+    "tecnica": "3D",
+    "cenas": 24
+  }
+}
+```
+
+#### Exemplo 6: publicitário (`PUBLICITARIO`)
+
+Resultado esperado: `formada`, DIRETOR = 18 Diego Rocha, DIRETOR DE FOTOGRAFIA = 4 João Gomes.
+
+```json
+{
+  "id": 4,
+  "genero": "AÇÃO",
+  "tipo": "PUBLICITARIO",
+  "duracaoMin": 1,
+  "orcamento": 60000,
+  "prazo": "2026-06-10T00:00:00.000Z",
+  "competencias": {
+    "DIRETOR": [
+      {
+        "nome": "Direção",
+        "nivel": 4
+      }
+    ],
+    "DIRETOR_FOTOGRAFIA": [
+      {
+        "nome": "Fotografia",
+        "nivel": 5
+      }
+    ]
+  },
+  "estrategia": "similiaridadecosseno",
+  "detalhes": {
+    "cliente": "Marca X",
+    "veiculos": [
+      "TV",
+      "Internet"
+    ]
+  }
+}
+```
+
+#### Exemplo 7: o Abstract Factory em ação (documentário sem editor)
+
+O pedido só tem DIRETOR. Resultado esperado: `200` com `"status": "inconsistente"` (o validador de documentário exige um editor).
+
+```json
+{
+  "id": 2,
+  "genero": "DRAMA",
+  "tipo": "DOCUMENTARIO",
+  "duracaoMin": 60,
+  "orcamento": 90000,
+  "prazo": "2026-06-10T00:00:00.000Z",
+  "competencias": {
+    "DIRETOR": [
+      {
+        "nome": "Direção",
+        "nivel": 5
+      }
+    ]
+  },
+  "estrategia": "similiaridadecosseno",
+  "detalhes": {
+    "tema": "Rios do Brasil",
+    "entrevistados": [
+      "Ana Lima",
+      "Carlos Souza"
+    ]
+  }
+}
+```
+
+Agora o **mesmo pedido** com `"tipo": "FICÇÃO"`. Resultado esperado: `"status": "formada"`. Só a fábrica mudou.
+
+```json
+{
+  "id": 2,
+  "genero": "DRAMA",
+  "tipo": "FICÇÃO",
+  "duracaoMin": 60,
+  "orcamento": 90000,
+  "prazo": "2026-06-10T00:00:00.000Z",
+  "competencias": {
+    "DIRETOR": [
+      {
+        "nome": "Direção",
+        "nivel": 5
+      }
+    ]
+  },
+  "estrategia": "similiaridadecosseno",
+  "detalhes": {
+    "tema": "Rios do Brasil",
+    "entrevistados": [
+      "Ana Lima",
+      "Carlos Souza"
+    ]
+  }
+}
+```
+
+**Resposta (formato)**
 ```json
 {
   "Recomendacao": {
@@ -296,6 +618,7 @@ Para ver o Strategy funcionando, envie o mesmo projeto trocando só `estrategia`
   "degradado": false
 }
 ```
+(O `profissional` vem com mais campos: competências, disponibilidade e avaliações.)
 
 | `status` | Significado |
 |---|---|
@@ -307,33 +630,423 @@ Para ver o Strategy funcionando, envie o mesmo projeto trocando só `estrategia`
 
 `degradado: true` indica que o banco estava fora do ar e a resposta usou os últimos dados em cache.
 
-### 6.2 Substituir um membro
+### 6.3 `POST /equipe/substituir`
 
-Envie o mesmo projeto, a equipe atual (papel → id do profissional) e o papel a trocar. O serviço não guarda estado: a equipe vai e volta no corpo.
+O serviço **não guarda estado**: a equipe atual vai no corpo, em `equipe` (papel → `profissionalId`). Os ids devem existir no banco (o seed cria de 1 a 32). Use os ids devolvidos pelo `POST /`. Só o `papel` indicado é recalculado; quem já está na equipe ou em `rejeitados` não volta.
+
+#### Exemplo 1: trocar a SONOPLASTA
+
+Resultado esperado: SONOPLASTA passa de 15 para 25 Letícia Dias; DIRETOR (1) e EDITOR (3) continuam.
 
 ```json
 {
-  "...": "todos os campos do projeto (id, genero, tipo, orcamento, prazo, competencias, estrategia)",
-  "equipe": {
-    "DIRETOR": { "profissionalId": "1" },
-    "EDITOR": { "profissionalId": "4", "confirmado": true },
-    "SONOPLASTA": { "profissionalId": "9" }
+  "id": 1,
+  "genero": "DRAMA",
+  "tipo": "FICÇÃO",
+  "duracaoMin": 90,
+  "orcamento": 150000,
+  "prazo": "2026-03-10T00:00:00.000Z",
+  "competencias": {
+    "DIRETOR": [
+      {
+        "nome": "Direção",
+        "nivel": 5
+      }
+    ],
+    "EDITOR": [
+      {
+        "nome": "Edição",
+        "nivel": 4
+      }
+    ],
+    "SONOPLASTA": [
+      {
+        "nome": "Som",
+        "nivel": 5
+      }
+    ]
   },
-  "papel": "DIRETOR",
-  "rejeitados": ["7"]
+  "pesos": {
+    "DIRETOR": 3,
+    "EDITOR": 2,
+    "SONOPLASTA": 1
+  },
+  "estrategia": "similiaridadecosseno",
+  "parametros": {
+    "limiarMinimo": 0.2
+  },
+  "equipe": {
+    "DIRETOR": {
+      "profissionalId": "1"
+    },
+    "EDITOR": {
+      "profissionalId": "3"
+    },
+    "SONOPLASTA": {
+      "profissionalId": "15"
+    }
+  },
+  "papel": "SONOPLASTA",
+  "rejeitados": []
 }
 ```
 
-Só o papel `DIRETOR` é recalculado. Os outros ficam fixos, o orçamento considerado é o que sobra depois deles, e quem já está na equipe ou em `rejeitados` não volta.
+#### Exemplo 2: trocar de novo, rejeitando a Letícia
 
-### 6.3 Responder a um convite
+Resultado esperado: SONOPLASTA = 2 Carlos Ribeiro.
+
+```json
+{
+  "id": 1,
+  "genero": "DRAMA",
+  "tipo": "FICÇÃO",
+  "duracaoMin": 90,
+  "orcamento": 150000,
+  "prazo": "2026-03-10T00:00:00.000Z",
+  "competencias": {
+    "DIRETOR": [
+      {
+        "nome": "Direção",
+        "nivel": 5
+      }
+    ],
+    "EDITOR": [
+      {
+        "nome": "Edição",
+        "nivel": 4
+      }
+    ],
+    "SONOPLASTA": [
+      {
+        "nome": "Som",
+        "nivel": 5
+      }
+    ]
+  },
+  "pesos": {
+    "DIRETOR": 3,
+    "EDITOR": 2,
+    "SONOPLASTA": 1
+  },
+  "estrategia": "similiaridadecosseno",
+  "parametros": {
+    "limiarMinimo": 0.2
+  },
+  "equipe": {
+    "DIRETOR": {
+      "profissionalId": "1"
+    },
+    "EDITOR": {
+      "profissionalId": "3"
+    },
+    "SONOPLASTA": {
+      "profissionalId": "15"
+    }
+  },
+  "papel": "SONOPLASTA",
+  "rejeitados": [
+    "25"
+  ]
+}
+```
+
+#### Exemplo 3: trocar o EDITOR de um documentário
+
+Resultado esperado: EDITOR passa de 3 para 13 Larissa Melo; o projeto continua `DOCUMENTARIO` e `formada`.
+
+```json
+{
+  "id": 2,
+  "genero": "DRAMA",
+  "tipo": "DOCUMENTARIO",
+  "duracaoMin": 60,
+  "orcamento": 90000,
+  "prazo": "2026-06-10T00:00:00.000Z",
+  "competencias": {
+    "DIRETOR": [
+      {
+        "nome": "Direção",
+        "nivel": 5
+      }
+    ],
+    "EDITOR": [
+      {
+        "nome": "Edição",
+        "nivel": 4
+      }
+    ],
+    "ROTEIRISTA": [
+      {
+        "nome": "Roteiro",
+        "nivel": 3
+      }
+    ]
+  },
+  "estrategia": "similiaridadecosseno",
+  "detalhes": {
+    "tema": "Rios do Brasil",
+    "entrevistados": [
+      "Ana Lima",
+      "Carlos Souza"
+    ]
+  },
+  "equipe": {
+    "DIRETOR": {
+      "profissionalId": "18"
+    },
+    "EDITOR": {
+      "profissionalId": "3"
+    },
+    "ROTEIRISTA": {
+      "profissionalId": "2"
+    }
+  },
+  "papel": "EDITOR",
+  "rejeitados": []
+}
+```
+
+> **Dica:** nem todo papel tem substituto em qualquer data. Se der `422 Nenhum profissional elegível`, ninguém disponível no `prazo` atende ao papel e ao orçamento restante: aumente o `orcamento`, mude o `prazo` ou tire o `limiarMinimo` de `parametros`.
+
+### 6.4 `POST /convites/responder`
 
 Mesmo corpo da substituição, mais `"aceito": true` ou `false`.
 
 - `true`: o membro fica `confirmado`. Quando todos confirmam, o status vira `confirmada` e é emitido o evento `Equipe Confirmada`.
 - `false`: o convite é marcado como recusado e o papel é substituído automaticamente.
 
-### 6.4 Erros
+#### Exemplo 1: o EDITOR aceita
+
+Resultado esperado: EDITOR com `confirmado: true`, os outros `false`, status `formada`.
+
+```json
+{
+  "id": 1,
+  "genero": "DRAMA",
+  "tipo": "FICÇÃO",
+  "duracaoMin": 90,
+  "orcamento": 150000,
+  "prazo": "2026-03-10T00:00:00.000Z",
+  "competencias": {
+    "DIRETOR": [
+      {
+        "nome": "Direção",
+        "nivel": 5
+      }
+    ],
+    "EDITOR": [
+      {
+        "nome": "Edição",
+        "nivel": 4
+      }
+    ],
+    "SONOPLASTA": [
+      {
+        "nome": "Som",
+        "nivel": 5
+      }
+    ]
+  },
+  "pesos": {
+    "DIRETOR": 3,
+    "EDITOR": 2,
+    "SONOPLASTA": 1
+  },
+  "estrategia": "similiaridadecosseno",
+  "parametros": {
+    "limiarMinimo": 0.2
+  },
+  "equipe": {
+    "DIRETOR": {
+      "profissionalId": "1"
+    },
+    "EDITOR": {
+      "profissionalId": "3"
+    },
+    "SONOPLASTA": {
+      "profissionalId": "15"
+    }
+  },
+  "papel": "EDITOR",
+  "aceito": true
+}
+```
+
+#### Exemplo 2: a SONOPLASTA recusa
+
+Resultado esperado: SONOPLASTA substituída por 25 Letícia Dias (`confirmado: false`).
+
+```json
+{
+  "id": 1,
+  "genero": "DRAMA",
+  "tipo": "FICÇÃO",
+  "duracaoMin": 90,
+  "orcamento": 150000,
+  "prazo": "2026-03-10T00:00:00.000Z",
+  "competencias": {
+    "DIRETOR": [
+      {
+        "nome": "Direção",
+        "nivel": 5
+      }
+    ],
+    "EDITOR": [
+      {
+        "nome": "Edição",
+        "nivel": 4
+      }
+    ],
+    "SONOPLASTA": [
+      {
+        "nome": "Som",
+        "nivel": 5
+      }
+    ]
+  },
+  "pesos": {
+    "DIRETOR": 3,
+    "EDITOR": 2,
+    "SONOPLASTA": 1
+  },
+  "estrategia": "similiaridadecosseno",
+  "parametros": {
+    "limiarMinimo": 0.2
+  },
+  "equipe": {
+    "DIRETOR": {
+      "profissionalId": "1"
+    },
+    "EDITOR": {
+      "profissionalId": "3"
+    },
+    "SONOPLASTA": {
+      "profissionalId": "15"
+    }
+  },
+  "papel": "SONOPLASTA",
+  "aceito": false,
+  "rejeitados": []
+}
+```
+
+#### Exemplo 3: o último membro aceita (equipe confirmada)
+
+Os outros dois já chegam com `"confirmado": true`. Resultado esperado: todos `confirmado: true` e `"status": "confirmada"`.
+
+```json
+{
+  "id": 1,
+  "genero": "DRAMA",
+  "tipo": "FICÇÃO",
+  "duracaoMin": 90,
+  "orcamento": 150000,
+  "prazo": "2026-03-10T00:00:00.000Z",
+  "competencias": {
+    "DIRETOR": [
+      {
+        "nome": "Direção",
+        "nivel": 5
+      }
+    ],
+    "EDITOR": [
+      {
+        "nome": "Edição",
+        "nivel": 4
+      }
+    ],
+    "SONOPLASTA": [
+      {
+        "nome": "Som",
+        "nivel": 5
+      }
+    ]
+  },
+  "pesos": {
+    "DIRETOR": 3,
+    "EDITOR": 2,
+    "SONOPLASTA": 1
+  },
+  "estrategia": "similiaridadecosseno",
+  "parametros": {
+    "limiarMinimo": 0.2
+  },
+  "equipe": {
+    "DIRETOR": {
+      "profissionalId": "1",
+      "confirmado": true
+    },
+    "EDITOR": {
+      "profissionalId": "3",
+      "confirmado": true
+    },
+    "SONOPLASTA": {
+      "profissionalId": "15"
+    }
+  },
+  "papel": "SONOPLASTA",
+  "aceito": true
+}
+```
+
+#### Exemplo 4: a ROTEIRISTA de um documentário recusa
+
+Resultado esperado: ROTEIRISTA substituída por 29 Tatiane Martins.
+
+```json
+{
+  "id": 2,
+  "genero": "DRAMA",
+  "tipo": "DOCUMENTARIO",
+  "duracaoMin": 60,
+  "orcamento": 90000,
+  "prazo": "2026-06-10T00:00:00.000Z",
+  "competencias": {
+    "DIRETOR": [
+      {
+        "nome": "Direção",
+        "nivel": 5
+      }
+    ],
+    "EDITOR": [
+      {
+        "nome": "Edição",
+        "nivel": 4
+      }
+    ],
+    "ROTEIRISTA": [
+      {
+        "nome": "Roteiro",
+        "nivel": 3
+      }
+    ]
+  },
+  "estrategia": "similiaridadecosseno",
+  "detalhes": {
+    "tema": "Rios do Brasil",
+    "entrevistados": [
+      "Ana Lima",
+      "Carlos Souza"
+    ]
+  },
+  "equipe": {
+    "DIRETOR": {
+      "profissionalId": "18"
+    },
+    "EDITOR": {
+      "profissionalId": "3"
+    },
+    "ROTEIRISTA": {
+      "profissionalId": "2"
+    }
+  },
+  "papel": "ROTEIRISTA",
+  "aceito": false,
+  "rejeitados": []
+}
+```
+
+### 6.5 Erros
 
 | Código | Quando |
 |---|---|
@@ -342,6 +1055,97 @@ Mesmo corpo da substituição, mais `"aceito": true` ou `false`.
 | 503 | banco indisponível e sem cache |
 
 Todos devolvem `{ "status": "error", "mensagem": "..." }`.
+
+
+#### Corpos para provocar cada erro
+
+**400** (estratégia inexistente), `POST /`:
+
+```json
+{
+  "id": 1,
+  "genero": "DRAMA",
+  "tipo": "FICÇÃO",
+  "duracaoMin": 90,
+  "orcamento": 150000,
+  "prazo": "2026-03-10T00:00:00.000Z",
+  "competencias": {
+    "DIRETOR": [
+      {
+        "nome": "Direção",
+        "nivel": 5
+      }
+    ],
+    "EDITOR": [
+      {
+        "nome": "Edição",
+        "nivel": 4
+      }
+    ],
+    "SONOPLASTA": [
+      {
+        "nome": "Som",
+        "nivel": 5
+      }
+    ]
+  },
+  "pesos": {
+    "DIRETOR": 3,
+    "EDITOR": 2,
+    "SONOPLASTA": 1
+  },
+  "estrategia": "xpto",
+  "parametros": {
+    "limiarMinimo": 0.2
+  }
+}
+```
+
+Resposta: `{"status":"error","mensagem":"body/estrategia must be equal to one of the allowed values"}`.
+
+**422** (orçamento baixo demais), `POST /`:
+
+```json
+{
+  "id": 1,
+  "genero": "DRAMA",
+  "tipo": "FICÇÃO",
+  "duracaoMin": 90,
+  "orcamento": 100,
+  "prazo": "2026-03-10T00:00:00.000Z",
+  "competencias": {
+    "DIRETOR": [
+      {
+        "nome": "Direção",
+        "nivel": 5
+      }
+    ],
+    "EDITOR": [
+      {
+        "nome": "Edição",
+        "nivel": 4
+      }
+    ],
+    "SONOPLASTA": [
+      {
+        "nome": "Som",
+        "nivel": 5
+      }
+    ]
+  },
+  "pesos": {
+    "DIRETOR": 3,
+    "EDITOR": 2,
+    "SONOPLASTA": 1
+  },
+  "estrategia": "similiaridadecosseno",
+  "parametros": {
+    "limiarMinimo": 0.2
+  }
+}
+```
+
+Resposta: `{"status":"error","mensagem":"Nenhum profissional elegível para os papéis do projeto (verifique orçamento e prazo)"}`.
 
 ## 7. Notificações, auditoria e eventos
 
@@ -390,23 +1194,4 @@ Os testes antigos continuaram passando; a única mudança neles foi `new Orquest
 | Nova operação sobre projeto ou profissional | implemente `VisitanteProjeto` e chame `projeto.aceitar(visitante)` |
 | Outra regra de orquestração | herde `OrquestradorEquipe` e implemente os 3 passos abstratos (`orquestrar` não pode ser sobrescrito) |
 
-## 10. Problemas comuns
 
-| Sintoma | Causa provável |
-|---|---|
-| `ECONNREFUSED 5432` | Postgres não está rodando (`docker compose ps`) ou o `.env` está errado |
-| `relation "profissional" does not exist` | faltou `npm run migration:run` |
-| `invalid input value for enum projetos_tipo_enum: "PUBLICITARIO"` | banco antigo sem a nova migration: rode `npm run migration:run` |
-| 400 "Não há fábrica registrada para o tipo ..." | tipo sem fábrica no `RegistroFabricas` |
-| Status `inconsistente` inesperado | o tipo exige papéis essenciais (tabela da seção 5.3) que o pedido não incluiu |
-| 422 "Nenhum profissional elegível" | `prazo` fora da disponibilidade dos profissionais, ou orçamento baixo demais |
-| Resposta `parcial` | falta profissional com a competência/avaliação do papel; aumente o orçamento ou relaxe `limiarMinimo` |
-| Windows: `npm` bloqueado no PowerShell | rode uma vez `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` |
-
-## 11. Limitações conhecidas
-
-- Localização geográfica de projetos e profissionais não foi implementada.
-- A equipe final não é gravada no banco: o serviço devolve o resultado e emite eventos; o estado fica com o cliente.
-- O barramento de eventos é só em memória (sem RabbitMQ).
-- Os protótipos (`RegistroPrototipos`) existem no domínio e nos testes, mas ainda não há endpoint HTTP para listá-los ou cloná-los.
-- Os papéis essenciais e as competências priorizadas de cada tipo são regras iniciais de exemplo; ajuste-as com o time de negócio.
