@@ -23,7 +23,7 @@ As seções 6 em diante são de uso (API, eventos, testes, extensão, problemas 
 
 **Ubuntu / derivados**
 ```bash
-cd AV1-TP-II-main
+cd AV2-TP-II-main
 npm install
 cp .envExemplo .env
 docker compose up -d        # sobe o Postgres com os dados do .env
