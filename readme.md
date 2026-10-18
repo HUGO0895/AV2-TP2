@@ -33,7 +33,7 @@ npm start                   # API em http://localhost:3000
 
 **Windows 10+ (PowerShell)**
 ```powershell
-cd AV1-TP-II-main
+cd AV2-TP-II-main
 npm install
 copy .envExemplo .env
 docker compose up -d
