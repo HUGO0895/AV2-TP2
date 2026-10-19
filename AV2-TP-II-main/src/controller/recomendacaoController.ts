@@ -8,7 +8,7 @@ import Projeto from "../Projetos/Modelo/projetos";
 import ServiceRecomendacao, { EquipeAtualDTO } from "../servico/ServiceRecomendacao";
 import RegistroFabricas from "../Fabricas/RegistroFabricas";
 import { criarEstrategia, estrategiasDisponiveis } from "../Strategy/StrategyFactory";
-
+/*  Faz o L */
 const propriedadesProjeto = {
     id: { type: 'number' },
     genero: { type: 'string', enum: Object.values(Genero) },
